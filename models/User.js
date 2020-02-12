@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-//creating the schema which hold the field we want
+
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -22,4 +22,5 @@ const UserSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
 module.exports = User = mongoose.model('user', UserSchema);
