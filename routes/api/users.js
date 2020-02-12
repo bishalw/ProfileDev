@@ -1,34 +1,74 @@
 const express = require('express');
 const router = express.Router();
+const gravatar = require('gravatar');
+const bcrypt = require('bcryptjs');
 const { check, validationResult } = require('express-validator');
 
+// bring user model in
+const User = require('../../config/models/User');
+
+// @route    POST api/users
+// @desc     Register user
+// @access   Public
 router.post(
   '/',
   [
-    check('name')
+    check('name', 'Name is required')
       .not()
-      .isEmpty()
-      .withMessage('Name is needed'),
-    check('email')
-      .isEmail()
-      .withMessage('Username cannot be empty.'),
+      .isEmpty(),
+    check('email', 'Please include a valid email').isEmail(),
     check(
       'password',
-      'Please enter a password with 6 or more character'
-    ).isLength({
-      min: 6
-    })
+      'Please enter a password with 6 or more characters'
+    ).isLength({ min: 6 })
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     console.log(req.body);
-
-    // If there are errors!!  if(errors.isEmpty()) = if there is not (!errors). ! gives u errors
     if (!errors.isEmpty()) {
-      console.log(errors.mapped());
       return res.status(400).json({ errors: errors.array() });
     }
-    res.send('User route');
+
+    const { name, email, password } = req.body;
+
+    try {
+      let user = await User.findOne({ email });
+      //See if the user exists
+      if (user) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: 'User already exists' }] });
+      }
+
+      //Get users gravatar
+      const avatar = gravatar.url(email, {
+        s: '200',
+        r: 'pg',
+        d: 'mp'
+      });
+      user = new User({
+        name,
+        email,
+        avatar,
+        password
+      });
+
+      //hash
+      const salt = await bcrypt.genSalt(10);
+      // Ecnrypt pass using bcrypt
+
+      user.password = await bcrypt.hash(password, salt);
+
+      await user.save();
+
+      // Return jsonwebtoken
+      res.send('User Registered');
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+
+    res.status(200).json({ message: 'User Route' });
   }
 );
 
